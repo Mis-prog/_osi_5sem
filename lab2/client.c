@@ -1,3 +1,7 @@
-//
-// Created by misha on 04.01.24.
-//
+#include <stdio.h>
+
+
+int main(){
+    printf("client\n");
+    return 0;
+}
