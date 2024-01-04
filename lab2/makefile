@@ -8,5 +8,5 @@ se: server.c
 cl: client.c
 	gcc client.c -o $(target2)
 clear:
-	rm serve
+	rm server
 	rm client
