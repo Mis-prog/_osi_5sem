@@ -6,6 +6,7 @@ const int MAX_COUNT = 10;
 struct data {
     int n_point;
     double temp, dx, x, y, z;
+    double time, temp_mean, dx_mean;
 };
 
 int optimal_i(const struct data *n_points);
@@ -73,11 +74,40 @@ int optimal_i(const struct data *n_points) {
     return i;
 }
 
-void task2(){
+struct data* task2() {
+    char name1[] = "BD 0 - 0.07 - 0.01.txt";
+    FILE *file1 = fopen(name1, "r");
 
-}
+    if (file1 == NULL) {
+        printf("Не удалось открыть файл\n");
+        return 0;
+    }
 
+    struct data *n_points = (struct data *) calloc(MAX_COUNT, sizeof(struct data));
 
-int main() {
-    return 0;
+    int n_point = 0, i = 0, dx_count = 0, temp_count = 0;
+    double time, temp, dx, dx_mean = 0, temp_mean = 0;
+    n_points[0].time = 0.01;
+    while (fscanf(file1, "%lf\t%d\t%lf\t%lf", &time, &n_point, &temp, &dx) == 4) {
+        if (n_points[i].time != time) {
+//            printf("time: %f,sum_dx: %f,count_dx: %d",n_points[i].time,dx_mean,dx_count);
+//            printf("time: %f,sum_temp: %f,count_temp: %d",n_points[i].time,temp_mean,temp_count);
+            dx_mean=dx_mean/(double)dx_count;
+//            printf(",time_mean: %.9f\n",dx_mean);
+            temp_mean=temp_mean/(double)temp_count;
+//            printf(",time_mean: %f\n",temp_mean);
+            n_points[i].temp_mean=temp_mean;
+            n_points[i].dx_mean=dx_mean;
+            dx_count = 0, temp_count = 0;
+            dx_mean = 0, temp_mean = 0;
+            i++;
+            n_points[i].time = time;
+        }
+        dx_mean+=dx;
+        dx_count+=1;
+
+        temp_mean+=temp;
+        temp_count+=1;
+    }
+    return n_points;
 }
