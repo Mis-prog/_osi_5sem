@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "../src_lib/calculation.h"
+
 
 const int port= 3427;
 

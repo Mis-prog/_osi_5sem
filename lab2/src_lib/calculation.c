@@ -11,7 +11,7 @@ struct data {
 
 int optimal_i(const struct data *n_points);
 
-int *calculation_point(double x, double y, double z, FILE *file2);
+struct data* calculation_point(double x, double y, double z, FILE *file2);
 
 void calculation_parametr(FILE *file1, struct data *n_points);
 
@@ -48,7 +48,7 @@ void calculation_parametr(FILE *file1, struct data *n_points) {
     }
 }
 
-int *calculation_point(double x, double y, double z, FILE *file2) {
+struct data *calculation_point(double x, double y, double z, FILE *file2) {
     struct data *n_points = (struct data *) calloc(MAX_COUNT, sizeof(struct data));
 
     int n_point = 0, i = 0;
