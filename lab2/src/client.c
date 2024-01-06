@@ -6,8 +6,11 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <string.h>
+#include "../src_lib/calculation.h"
 
-const int port = 3427;
+
+const int port = 3428;
 
 struct User {
     char username[20];
@@ -27,7 +30,7 @@ int main(int argc, char *argv[]) {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("connect");
         exit(2);
     }
@@ -42,10 +45,46 @@ int main(int argc, char *argv[]) {
 
     send(sock, &user, sizeof(user), 0);
 
-    bool message=false;
+    bool message = false;
     recv(sock, &message, sizeof(message), 0);
 
-    printf("%d\n",message);
+    int command;
+    double coord[3]={0};
+    if (message) {
+        while (1) {
+            printf("Введите номер задания: ");
+            scanf("%d", &command);
+            if (command == 1) {
+                char message[30];
+                send(sock, &command, sizeof(command), 0);
+                recv(sock, message, sizeof(message), 0);
+                printf("%s\n", message);
+                double coord[3]={0};
+                struct data result[10];
+                scanf("%lf %lf %lf", &coord[0], &coord[1], &coord[2]);
+                send(sock, coord, sizeof(coord), 0);
+                recv(sock, &result[0], sizeof(result), 0);
+                int i=0;
+                while (result[i].n_point != -1) {
+                    printf("n_point: %d, temp: %f, dx: %.9f\n", result[i].n_point,result[i].temp, result[i].dx);
+                    i++;
+                }
+//                send(sock, &command, sizeof(command), 0);
+            } else if (command == 2) {
+                struct data result[10];
+                send(sock, &command, sizeof(command), 0);
+                recv(sock, &result[0], sizeof(result), 0);
+                for (int i = 0; i < 7; i++) {
+                    printf("time: %f,term_mean: %f,dx_mean: %.9f\n",result[i].time,result[i].temp_mean,result[i].dx_mean);
+                }
+            }
+            if (command == 0) {
+                break;
+            }
+        }
+    } else {
+        printf("Ошибка с аунтефикацией\n");
+    }
 
     close(sock);
 

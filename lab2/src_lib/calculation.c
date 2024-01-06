@@ -1,13 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const int MAX_COUNT = 10;
+#define MAX_COUNT 10
 
 struct data {
     int n_point;
     double temp, dx, x, y, z;
     double time, temp_mean, dx_mean;
 };
+
+struct data *task1(double x, double y, double z);
+struct data *task2();
 
 int optimal_i(const struct data *n_points);
 
