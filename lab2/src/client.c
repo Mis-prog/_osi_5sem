@@ -10,7 +10,6 @@
 #include "../src_lib/calculation.h"
 
 
-const int port = 3428;
 
 struct User {
     char username[20];
@@ -27,8 +26,16 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    int default_port_addd = 3425;
+    int enter_port_addd = 0;
+    printf("Enter port ");
+    scanf("%d", &enter_port_addd);
+    if (enter_port_addd == 0){
+        enter_port_addd = default_port_addd;
+    }
+
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    addr.sin_port = htons(enter_port_addd);
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("connect");
@@ -52,7 +59,7 @@ int main(int argc, char *argv[]) {
     double coord[3]={0};
     if (message) {
         while (1) {
-            printf("Введите номер задания: ");
+            printf("Введите номер задания (1,2):");
             scanf("%d", &command);
             if (command == 1) {
                 char message[30];

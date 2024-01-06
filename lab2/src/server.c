@@ -16,7 +16,7 @@ struct User {
 
 const char file_name_user[] = "users.txt";
 
-const int port = 3428;
+const int port = 3425;
 
 bool check_user(FILE *file_users, struct User *user, struct User *user_in_file);
 
@@ -58,17 +58,8 @@ int main() {
             perror("Ошибка при подключении");
             exit(4);
         }
-
-        if (fork() == 0) {
-            // Дочерний процесс
-            close(listener);
-            handle_client(client_socket, file_users);
-            fclose(file_users);
-            exit(0);
-        } else {
-            // Родительский процесс
-            close(client_socket);
-        }
+        handle_client(client_socket,file_users);
+        close(client_socket);
     }
 
     fclose(file_users);
