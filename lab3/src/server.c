@@ -103,6 +103,7 @@ void handle_client(int client_socket, FILE *file_users) {
                 free(result);
             }else {
                 exit(5);
+
             }
 
         }
