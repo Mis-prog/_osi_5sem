@@ -1,127 +1,160 @@
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <stdbool.h>
 #include <string.h>
+#include <time.h>
 #include "src_lib/calculation.h"
 
+#define PORT_NUMBER 3425
+#define LENGTH 20
+
+
 struct User {
-    char username[20];
-    char password[20];
+    char username[LENGTH];
+    char password[LENGTH];
+    int id;
 };
 
-const char file_name_user[] = "../data/users.txt";
+struct Message {
+    struct User user;
+    char command[LENGTH];
+    double data[3];
+};
 
-const int port = 3425;
+const char FILE_NAME_USER[] = "../data/users.txt";
+const char FILE_NAME_LOG[] = "../bin/log.txt";
 
-bool check_user(FILE *file_users, struct User *user, struct User *user_in_file);
-
-void handle_client(int client_socket, FILE *file_users);
+// Function prototypes
+bool check_user(FILE *file_users, struct Message *user, struct User *user_in_file);
+void handle_client(int socket, struct sockaddr_in client_addr, socklen_t client_addr_len,
+                   FILE *file_users, FILE *file_log);
 
 int main() {
-    FILE *file_users = fopen(file_name_user, "r");
+    int socket_descriptor;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
 
-    if (file_users == NULL) {
-        perror("Error opening file");
-        exit(1);
-    }
-
-    int sock, listener;
-    struct sockaddr_in addr;
-    struct User user, user_in_file;
-    bool message = false;
-    int bytes_read;
-
-    listener = socket(AF_INET, SOCK_STREAM, 0);
-    if (listener < 0) {
+    socket_descriptor = socket(AF_INET, SOCK_DGRAM, 0);
+    if (socket_descriptor < 0) {
         perror("socket");
-        exit(2);
+        exit(EXIT_FAILURE);
     }
 
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(listener, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT_NUMBER);
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    if (bind(socket_descriptor, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("bind");
-        exit(3);
+        exit(EXIT_FAILURE);
     }
 
-    listen(listener, 1);
+    printf("UDP Server is running on port %d...\n", PORT_NUMBER);
+
+    FILE *file_users = fopen(FILE_NAME_USER, "r");
+    FILE *file_log = fopen(FILE_NAME_LOG, "a");
+
+    if (file_users == NULL || file_log == NULL) {
+        perror("Error opening file");
+        exit(EXIT_FAILURE);
+    }
 
     while (1) {
-        int client_socket = accept(listener, NULL, NULL);
-        if (client_socket < 0) {
-            perror("Ошибка при подключении");
-            exit(4);
-        }
-        handle_client(client_socket,file_users);
-        close(client_socket);
+        handle_client(socket_descriptor, client_addr, client_addr_len, file_users, file_log);
     }
 
     fclose(file_users);
+    fclose(file_log);
+
     return 0;
 }
 
-void handle_client(int client_socket, FILE *file_users) {
-    struct User user, user_in_file;
+void handle_client(int socket_descriptor, struct sockaddr_in client_addr, socklen_t client_addr_len,
+                   FILE *file_users, FILE *file_log) {
+    time_t current_time;
+    struct tm *local_time;
+
+    struct Message message_user;
+    struct User user_in_file;
     bool authenticated = false;
-    int bytes_read;
+    int bytes_received;
 
-    while (!authenticated) {
-        bytes_read = recv(client_socket, &user, sizeof(user), 0);
-        if (bytes_read <= 0)
-            break;
+    bytes_received = recvfrom(socket_descriptor, &message_user, sizeof(message_user), 0,
+                              (struct sockaddr *)&client_addr, &client_addr_len);
 
-        authenticated = check_user(file_users, &user, &user_in_file);
-        send(client_socket, &authenticated, sizeof(authenticated), 0);
-    }
+    authenticated = check_user(file_users, &message_user, &user_in_file);
+    sendto(socket_descriptor, &authenticated, sizeof(authenticated), 0,
+           (struct sockaddr *)&client_addr, client_addr_len);
 
     if (authenticated) {
         int command;
+        current_time = time(NULL);
+        local_time = localtime(&current_time);
+
+        if (fprintf(file_log, "%02d:%02d:%02d авторизация %d\n",
+                    local_time->tm_hour, local_time->tm_min, local_time->tm_sec, authenticated) < 0) {
+            perror("Error writing to log file");
+        }
 
         while (1) {
-            bytes_read = recv(client_socket, &command, sizeof(command), 0);
-            if (bytes_read <= 0)
+            bytes_received = recvfrom(socket_descriptor, &command, sizeof(command), 0,
+                                      (struct sockaddr *)&client_addr, &client_addr_len);
+
+            if (bytes_received <= 0) {
                 break;
+            }
+
             if (command == 1) {
-                char message[] = "Введите x,y,z:";
-                send(client_socket, message, sizeof(message), 0);
-                double coord[3]={0};
-                bytes_read = recv(client_socket, coord, sizeof(coord), 0);
-                if (bytes_read <= 0)
+                char message[] = "Введите x, y, z:";
+                sendto(socket_descriptor, message, sizeof(message), 0,
+                       (struct sockaddr *)&client_addr, client_addr_len);
+
+                double coord[3] = {0};
+                bytes_received = recvfrom(socket_descriptor, coord, sizeof(coord), 0,
+                                          (struct sockaddr *)&client_addr, &client_addr_len);
+
+                if (bytes_received <= 0) {
                     break;
-                struct data *result = task1(coord[0],coord[1],coord[2]);
-                send(client_socket, result, sizeof(struct data) * 10, 0);
+                }
+
+                struct data *result = task1(coord[0], coord[1], coord[2]);
+                sendto(socket_descriptor, result, sizeof(struct data) * 10, 0,
+                       (struct sockaddr *)&client_addr, client_addr_len);
                 free(result);
             } else if (command == 2) {
                 struct data *result = task2();
-                send(client_socket, result, sizeof(struct data) * 10, 0);
+                sendto(socket_descriptor, result, sizeof(struct data) * 10, 0,
+                       (struct sockaddr *)&client_addr, client_addr_len);
                 free(result);
-            }else {
-                exit(5);
+            } else {
+                exit(EXIT_FAILURE);
             }
+        }
+    } else {
+        current_time = time(NULL);
+        local_time = localtime(&current_time);
 
+        if (fprintf(file_log, "%02d:%02d:%02d авторизация %d\n",
+                    local_time->tm_hour, local_time->tm_min, local_time->tm_sec, authenticated) < 0) {
+            perror("Error writing to log file");
         }
     }
-
-    close(client_socket);
 }
 
-bool check_user(FILE *file_users, struct User *user, struct User *user_in_file) {
-    bool message = false;
-
+bool check_user(FILE *file_users, struct Message *user, struct User *user_in_file) {
+    bool authenticated = false;
     fseek(file_users, 0, SEEK_SET);
 
     while (fscanf(file_users, "%s %s", user_in_file->username, user_in_file->password) == 2) {
-        if (strcmp(user_in_file->password, user->password) == 0 &&
-            strcmp(user_in_file->username, user->username) == 0) {
-            message = true;
+        if (strcmp(user_in_file->password, user->user.password) == 0 &&
+            strcmp(user_in_file->username, user->user.username) == 0) {
+            authenticated = true;
             break;
         }
     }
-    return message;
+
+    return authenticated;
 }
