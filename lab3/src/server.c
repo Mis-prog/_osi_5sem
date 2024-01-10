@@ -33,6 +33,9 @@ void handle_client(int socket, struct sockaddr_in client_addr, socklen_t client_
                    FILE *file_users, FILE *file_log);
 
 int main() {
+    FILE *file_users = fopen(FILE_NAME_USER, "r");
+    FILE *file_log = fopen(FILE_NAME_LOG, "a");
+
     int socket_descriptor;
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
@@ -54,8 +57,6 @@ int main() {
 
     printf("UDP Server is running on port %d...\n", PORT_NUMBER);
 
-    FILE *file_users = fopen(FILE_NAME_USER, "r");
-    FILE *file_log = fopen(FILE_NAME_LOG, "a");
 
     if (file_users == NULL || file_log == NULL) {
         perror("Error opening file");
