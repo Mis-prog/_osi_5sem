@@ -10,7 +10,7 @@ build_lib: src_lib/calculation.c
 	gcc -c src_lib/calculation.c -o ../bin/calculation.o
 	ar rcs ../bin/libcalculation.a ../bin/calculation.o
 
-se: server.c build_lib
+se: server.c
 	gcc -c server.c -o ../bin/$(target1).o
 	gcc ../bin/$(target1).o -o ../bin/$(target1) -L../bin -lcalculation
 

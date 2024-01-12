@@ -1,19 +1,13 @@
 #include <stdio.h>
 #include <time.h>
 
+void writeLog(int userId, const char* userCommand, int serverResponse) {
+}
+
 int main() {
-    time_t currentTime;
-    struct tm *localTime;
-
-    // Получаем текущее время
-    currentTime = time(NULL);
-
-    // Преобразуем время в локальное представление
-    localTime = localtime(&currentTime);
-
-    // Выводим текущее время в формате часы:минуты:секунды
-    printf("Текущее время: %02d:%02d:%02d\n",
-           localTime->tm_hour, localTime->tm_min, localTime->tm_sec);
+    // Пример использования функции записи в лог
+    writeLog(123, "GET /index.html", 200);
+    writeLog(456, "POST /login", 500);
 
     return 0;
 }

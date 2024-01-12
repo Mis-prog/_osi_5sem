@@ -28,7 +28,7 @@ struct Message {
 };
 
 void set_user_info(struct Message *message_user);
-void handle_command(int sock, struct sockaddr_in server_addr, socklen_t server_addr_len, int command);
+void handle_server(int sock, struct sockaddr_in server_addr, socklen_t server_addr_len, int command);
 void display_task1_results(struct data result[MAX_DATA_POINTS]);
 void display_task2_results(struct data result[MAX_DATA_POINTS]);
 
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
             getchar();
 
             if (command == 1 || command == 2) {
-                handle_command(sock, server_addr, server_addr_len, command);
+                handle_server(sock, server_addr, server_addr_len, command);
             } else {
                 break;
             }
@@ -100,7 +100,7 @@ void set_user_info(struct Message *message_user) {
     message_user->user.id = rand() % ID_MAX;
 }
 
-void handle_command(int sock, struct sockaddr_in server_addr, socklen_t server_addr_len, int command) {
+void handle_server(int sock, struct sockaddr_in server_addr, socklen_t server_addr_len, int command) {
     sendto(sock, &command, sizeof(command), 0, (struct sockaddr*)&server_addr, server_addr_len);
 
     if (command == 1) {
