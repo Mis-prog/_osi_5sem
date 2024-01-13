@@ -21,8 +21,8 @@ struct data* calculation_point(double x, double y, double z, FILE *file2);
 void calculation_parametr(FILE *file1, struct data *n_points);
 
 struct data *task1(double x, double y, double z) {
-    char name1[] = "../data/BD 0 - 0.07 - 0.01.txt";
-    char name2[] = "../data/BD_Coords.txt";
+    char name1[] = "../../data/BD 0 - 0.07 - 0.01.txt";
+    char name2[] = "../../data/BD_Coords.txt";
 
     FILE *file1 = fopen(name1, "r");
     FILE *file2 = fopen(name2, "r");
@@ -80,7 +80,7 @@ int optimal_i(const struct data *n_points) {
 }
 
 struct data* task2() {
-    char name1[] = "../data/BD 0 - 0.07 - 0.01.txt";
+    char name1[] = "../../data/BD 0 - 0.07 - 0.01.txt";
 
     FILE *file1 = fopen(name1, "r");
 
