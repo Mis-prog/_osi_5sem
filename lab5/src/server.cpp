@@ -1,41 +1,78 @@
 #include <iostream>
 #include <boost/asio.hpp>
+#include <string>
+#include <fstream>
+#include "src_lib/calculation.h"
+#include "json.hpp"
 
+using json = nlohmann::json;
 using namespace boost::asio;
 using ip::tcp;
 using std::string;
 using std::cout;
+using std::cerr;
 using std::endl;
 
 
-string read_(tcp::socket & socket) {
-    boost::asio::streambuf buf;
-    boost::asio::read_until( socket, buf, "\n" );
+struct User {
+    string username;
+    string password;
 
-    string data = boost::asio::buffer_cast<const char*>(buf.data());
-    return data;
-}
+    User(const string &username, const string &password);
+};
+
+User::User(const string &username, const string &password) : username(username), password(password) {}
+
+const char *path_file = "../../data/users.txt";
 
 
-void send_(tcp::socket & socket, const string& message) {
-    const string msg = message + "\n";
-    boost::asio::write( socket, boost::asio::buffer(message) );
-}
+bool check_user(struct User &user);
+
 
 int main() {
-    boost::asio::io_service io_service;
+    io_service service;
+    ip::tcp::acceptor acceptor(service, ip::tcp::endpoint(ip::tcp::v4(), 8001));
+    while (true) {
+        ip::tcp::socket sock(service);
+        acceptor.accept(sock);
+        streambuf buf;
+        read_until(sock, buf, '}');
+        std::istream is(&buf);
+        json userJson;
+        is >> userJson;
 
-    tcp::acceptor acceptor_(io_service, tcp::endpoint(tcp::v4(), 1234 ));
 
-    tcp::socket socket_(io_service);
-    acceptor_.accept(socket_);
+        User user(userJson["username"], userJson["password"]);
 
+        if (check_user(user)) {
+            string message = "true";
+            write(sock, buffer(message));
+        } else {
+            string message = "false";
+            write(sock, buffer(message));
+        }
+        sock.close();
+    }
 
-    string message = read_(socket_);
-    cout << message << endl;
-
-    send_(socket_, "Hello From Server!");
-    cout << "Servent sent Hello message to Client!" << endl;
 
     return 0;
+}
+
+bool check_user(struct User &user) {
+    bool check = false;
+    std::ifstream user_file(path_file);
+    if (!user_file.is_open()) {
+        cerr << "Не удалось открыть файл\n";
+        exit(1);
+    }
+    string username, password;
+    while (user_file >> username >> password) {
+        if (user.username == username &&
+            user.password == password) {
+            check = true;
+            break;
+        }
+    }
+    user_file.close();
+    return check;
 }
