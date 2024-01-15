@@ -7,14 +7,14 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
-#include "../src_lib/calculation.h"
+#include "src_lib/calculation.h"
 
 struct User {
     char username[20];
     char password[20];
 };
 
-const char file_name_user[] = "users.txt";
+const char file_name_user[] = "../data/users.txt";
 
 const int port = 3425;
 

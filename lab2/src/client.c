@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <string.h>
-#include "../src_lib/calculation.h"
+#include "src_lib/calculation.h"
 
 
 
