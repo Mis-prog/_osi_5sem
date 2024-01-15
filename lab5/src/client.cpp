@@ -12,47 +12,76 @@ using std::cin;
 using std::cout;
 using std::cerr;
 using std::endl;
-
-struct User {
-    string username;
-    string password;
-};
+using std::istream;
 
 
-void set_name(struct User &user);
+void set_name(json &user);
 
 int main() {
+    json test;
+    test={{0.01:{time:12}}};
     io_service service;
     ip::tcp::socket sock(service);
     ip::tcp::endpoint ep(ip::address::from_string("127.0.0.1"), 8001);
     sock.connect(ep);
 
-    User user;
+    json user;
     set_name(user);
-    json userJson = {
-            {"username", user.username},
-            {"password", user.password}
-    };
 
-    boost::system::error_code error;
-    write(sock, buffer(userJson.dump()), error);
+    write(sock, buffer(user.dump() + '\n'));
 
-    boost::asio::streambuf receive_buffer;
-    boost::asio::read(sock, receive_buffer, boost::asio::transfer_all(), error);
-    const char *data = boost::asio::buffer_cast<const char *>(receive_buffer.data());
+    streambuf buf;
+    read_until(sock, buf, '\n');
+    istream is(&buf);
+    json message;
+    is >> message;
 
-    if (strcmp(data, "true") == 0) {
-        cout << 1 << endl;
+    if (message["message"] == "true") {
+        string data_message;
+        cout << "Введите номер задания (1,2)\n";
+        cin >> data_message;
+        message.clear();
+        message["command"] = data_message;
+        write(sock, buffer(message.dump() + '\n'));
+        if (data_message == "1") {
+            streambuf buf;
+            read_until(sock, buf, '\n');
+            istream is(&buf);
+            json message;
+            is >> message;
+            cout << message << endl;
+
+            double x, y, z;
+            cin >> x >> y >> z;
+            json data;
+            data["x"] = x;
+            data["y"] = y;
+            data["z"] = z;
+//            cout << data << endl;
+            write(sock, buffer(data.dump() + '\n'));
+        }
+        if (data_message == "2") {
+
+        }
+
     } else {
-        cout << 2 << endl;
+        cout << message << endl;
+        sock.close();
+        return 0;
     }
+
     sock.close();
+
     return 0;
 }
 
-void set_name(struct User &user) {
+void set_name(json &user) {
+    string data;
     cout << "Введите имя:\n";
-    cin >> user.username;
+    cin >> data;
+    user["username"] = data;
     cout << "Введите пароль:\n";
-    cin >> user.password;
+    data = "";
+    cin >> data;
+    user["password"] = data;
 }

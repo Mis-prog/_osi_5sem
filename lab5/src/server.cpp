@@ -12,21 +12,13 @@ using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
+using std::istream;
 
-
-struct User {
-    string username;
-    string password;
-
-    User(const string &username, const string &password);
-};
-
-User::User(const string &username, const string &password) : username(username), password(password) {}
 
 const char *path_file = "../../data/users.txt";
 
 
-bool check_user(struct User &user);
+bool check_user(json &user);
 
 
 int main() {
@@ -36,29 +28,47 @@ int main() {
         ip::tcp::socket sock(service);
         acceptor.accept(sock);
         streambuf buf;
-        read_until(sock, buf, '}');
-        std::istream is(&buf);
-        json userJson;
-        is >> userJson;
-
-
-        User user(userJson["username"], userJson["password"]);
+        read_until(sock, buf, '\n');
+        istream is(&buf);
+        json user;
+        is >> user;
 
         if (check_user(user)) {
-            string message = "true";
-            write(sock, buffer(message));
+            json message;
+            message["message"] = "true";
+            write(sock, buffer(message.dump() + '\n'));
         } else {
-            string message = "false";
-            write(sock, buffer(message));
+            json message;
+            message["message"] = "Ошибка ауентификации";
+            write(sock, buffer(message.dump() + '\n'));
+            sock.close();
         }
-        sock.close();
+        streambuf buf_command;
+        read_until(sock, buf_command, '\n');
+        istream is_command(&buf_command);
+        json message;
+        is_command >> message;
+        if (message["command"] == "1") {
+            message.clear();
+            message["message"] = "Введите:x, y, z";
+            write(sock, buffer(message.dump() + '\n'));
+
+            streambuf buf_data;
+            read_until(sock, buf_data, '\n');
+            istream is_data(&buf_data);
+            message.clear();
+            is_data >> message;
+            cout << message << endl;
+        }
+        if (message["command"] == "2") {
+
+        }
     }
-
-
     return 0;
 }
 
-bool check_user(struct User &user) {
+
+bool check_user(json &user) {
     bool check = false;
     std::ifstream user_file(path_file);
     if (!user_file.is_open()) {
@@ -67,8 +77,8 @@ bool check_user(struct User &user) {
     }
     string username, password;
     while (user_file >> username >> password) {
-        if (user.username == username &&
-            user.password == password) {
+        if (user["username"] == username &&
+            user["password"] == password) {
             check = true;
             break;
         }
