@@ -1,2 +1,0 @@
-[46] User 123: GET /index.html, Server response: 200
-[46] User 456: POST /login, Server response: 500

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "calculation.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled",
+    "CodeGPT.apiKey": "CodeGPT Plus Beta"
+}

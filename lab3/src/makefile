@@ -12,10 +12,10 @@ build_lib: src_lib/calculation.c
 
 se: server.c
 	gcc -c server.c -o ../bin/$(target1).o
-	gcc ../bin/$(target1).o -o ../bin/$(target1) -L../bin -lcalculation
+	gcc ../bin/$(target1).o -o ../bin/$(target1) -L../bin -lcalculation -luuid
 
 cl: client.c
-	gcc client.c -o ../bin/$(target2)
+	gcc client.c -o ../bin/$(target2) -luuid
 
 clean:
 	rm -rf ../bin

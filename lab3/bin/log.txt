@@ -1,5 +1,3 @@
-time: [49] User 98: authentication success, Server response: 200
-time: [57] User 98: task1 executed, Server response: 200
-time: [18] User 98: invalid command, Server response: 400
-time: [13] User 19: authentication success, Server response: 200
-time: [55] User 19: invalid command, Server response: 400
+time: 21:24:29 User: 197551c2-80e1-4fba-8fa6-53f688ec5a7c LOGIN, Server response: 200
+time: 21:24:35 User: 197551c2-80e1-4fba-8fa6-53f688ec5a7c Повторная авторизация, Server response: 400
+time: 21:24:35 User: 197551c2-80e1-4fba-8fa6-53f688ec5a7c Ошибка ввода, Server response: 530

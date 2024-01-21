@@ -1,13 +1,18 @@
 #include <stdio.h>
-#include <time.h>
+#include <uuid/uuid.h>
 
-void writeLog(int userId, const char* userCommand, int serverResponse) {
-}
 
 int main() {
-    // Пример использования функции записи в лог
-    writeLog(123, "GET /index.html", 200);
-    writeLog(456, "POST /login", 500);
+    uuid_t uuid;
+    char uuid_str[37]; // 36 символов UUID и 1 символ для завершения строки
+
+    // Генерируем UUID
+    uuid_generate(uuid);
+
+    // Преобразуем UUID в строку
+    uuid_unparse(uuid, uuid_str);
+
+    printf("%d",uuid);
 
     return 0;
 }

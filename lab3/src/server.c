@@ -5,38 +5,45 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
+#include <uuid/uuid.h>
 #include "src_lib/calculation.h"
 
 #define PORT_NUMBER 3425
 #define LENGTH 20
 
+struct Key_Command {
+    char *command;
+    int key;
+};
 
 struct User {
-    char username[LENGTH];
-    char password[LENGTH];
-    int id;
+    char username[20];
+    char password[20];
+    uuid_t uuid;
 };
 
 struct Message {
-    struct User user;
-    char command[LENGTH];
-    double data[3];
+    int command;
+    struct data *data_message;
+    char *string_message;
 };
+
+struct Key_Command command_list[5];
 
 const char FILE_NAME_USER[] = "../data/users.txt";
 const char FILE_NAME_LOG[] = "../bin/log.txt";
 
-bool check_user(FILE *file_users, struct Message *user, struct User *user_in_file);
+void set_command();
 
-void handle_client(int socket, struct sockaddr_in client_addr, socklen_t client_addr_len,
-                   FILE *file_users);
+char *get_command();
+
+bool check_user(struct User *user);
 
 void write_log(struct User user, const char *user_command, int server_responsive);
 
 int main() {
-    FILE *file_users = fopen(FILE_NAME_USER, "r");
-
     int socket_descriptor;
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
@@ -54,102 +61,182 @@ int main() {
 
     if (bind(socket_descriptor, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
         perror("bind");
+        close(socket_descriptor);
         exit(EXIT_FAILURE);
     }
 
     printf("UDP Server is running on port %d...\n", PORT_NUMBER);
 
+    set_command();
+    struct Message message;
 
-    if (file_users == NULL) {
-        perror("Error opening file");
-        exit(EXIT_FAILURE);
+    int command;
+    bool authenticated = false;
+
+    struct User user;
+    uuid_generate(user.uuid);
+
+    while (true) {
+
+        int bytes_received = recvfrom(socket_descriptor, &message, sizeof(message), 0,
+                                      (struct sockaddr *) &client_addr, &client_addr_len);
+        if (bytes_received < 0) {
+            perror("recvfrom");
+            write_log(user, "Ошибка ввода", 530);
+            close(socket_descriptor);
+            exit(EXIT_FAILURE);
+        }
+
+        switch (command) {
+            case 0: //LOGIN
+                if (!authenticated) {
+                    bytes_received = recvfrom(socket_descriptor, &user, sizeof(user), 0,
+                                              (struct sockaddr *) &client_addr, &client_addr_len);
+                    if (bytes_received < 0) {
+                        perror("recvfrom");
+                        close(socket_descriptor);
+                        exit(EXIT_FAILURE);
+                    }
+
+                    authenticated = check_user(&user);
+                    sendto(socket_descriptor, &authenticated, sizeof(authenticated), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "LOGIN", 200);
+                    break;
+                } else {
+                    write_log(user, "Повторная авторизация", 400);
+                    close(socket_descriptor);
+                }
+                break;
+            case 1: //LIST
+                if (authenticated) {
+                    message.string_message = NULL;
+                    message.string_message = get_command();
+                    sendto(socket_descriptor, &message, sizeof(message), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "LIST", 200);
+                } else {
+                    message.string_message = NULL;
+                    message.string_message = "Нет доступа";
+                    sendto(socket_descriptor,&message, sizeof(message), 0,(struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "Нет доступа", 403);
+                }
+                break;
+            case 2: //GET_TASK1
+                if (authenticated) {
+                    message.string_message = NULL;
+                    message.string_message = "Введите x,y,z";
+                    sendto(socket_descriptor, &message, sizeof(message), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+
+                    bytes_received = recvfrom(socket_descriptor, &message, sizeof(message), 0,
+                                              (struct sockaddr *) &client_addr, &client_addr_len);
+                    if (bytes_received < 0) {
+                        write_log(user, "Ошибка ввода", 500);
+                        exit(EXIT_FAILURE);
+                    }
+                    message.data_message = task1(message.data_message->x, message.data_message->y,
+                                                 message.data_message->z);
+                    sendto(socket_descriptor, &message, sizeof(message), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "GET_TASK1", 200);
+                } else {
+                    message.string_message = NULL;
+                    message.string_message = "Нет доступа";
+                    sendto(socket_descriptor,&message, sizeof(message), 0,(struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "Нет доступа", 403);
+                }
+                break;
+            case 3: //GET_TASK2
+                if (authenticated) {
+                    message.data_message = task2();
+                    sendto(socket_descriptor, &message, sizeof(message), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "GET_TASK2", 200);
+                } else {
+                    message.string_message = NULL;
+                    message.string_message = "Нет доступа";
+                    sendto(socket_descriptor, &message, sizeof(message),0,(struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "Нет доступа", 403);
+                }
+                break;
+            case 4: //LOGOUT
+                message.string_message = NULL;
+                if (authenticated) {
+                    authenticated = false;
+
+                    message.string_message = "Выход из системы";
+                    sendto(socket_descriptor, &message, sizeof(message), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "LOGOUT", 200);
+                } else {
+                    message.string_message = "Повторный выход из системы";
+                    sendto(socket_descriptor, &message, sizeof(message), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "Повторный выход из системы", 400);
+                }
+                break;
+            default:
+                message.string_message = NULL;
+                message.string_message = "Запрос не поддерживается сервером";
+                sendto(socket_descriptor, &message, sizeof(message), 0,
+                       (struct sockaddr *) &client_addr, client_addr_len);
+                write_log(user, "Запрос не поддерживается сервером", 501);
+
+        }
     }
 
-    while (1) {
-        handle_client(socket_descriptor, client_addr, client_addr_len, file_users);
-    }
-
-    fclose(file_users);
+    close(socket_descriptor);
 
     return 0;
 }
 
-void handle_client(int socket_descriptor, struct sockaddr_in client_addr, socklen_t client_addr_len, FILE *file_users) {
-    time_t current_time;
-    struct tm *local_time;
+void set_command() {
+    command_list[0].command = "LOGIN";
+    command_list[0].key = 0;
 
-    struct Message message_user;
-    struct User user_in_file;
-    bool authenticated = false;
-    int bytes_received;
+    command_list[1].command = "LIST";
+    command_list[1].key = 1;
 
-    bytes_received = recvfrom(socket_descriptor, &message_user, sizeof(message_user), 0,
-                              (struct sockaddr *) &client_addr, &client_addr_len);
+    command_list[2].command = "GET_TASK1";
+    command_list[2].key = 2;
 
-    authenticated = check_user(file_users, &message_user, &user_in_file);
-    sendto(socket_descriptor, &authenticated, sizeof(authenticated), 0,
-           (struct sockaddr *) &client_addr, client_addr_len);
+    command_list[3].command = "GET_TASK2";
+    command_list[3].key = 3;
 
-    if (authenticated) {
-        int command;
-        write_log(message_user.user, "authentication success", 200);
-
-        while (1) {
-            bytes_received = recvfrom(socket_descriptor, &command, sizeof(command), 0,
-                                      (struct sockaddr *) &client_addr, &client_addr_len);
-
-            if (bytes_received <= 0) {
-                write_log(message_user.user, "communication error", 500);
-                break;
-            }
-
-            if (command == 1) {
-                char message[] = "Введите x, y, z:";
-                sendto(socket_descriptor, message, sizeof(message), 0,
-                       (struct sockaddr *) &client_addr, client_addr_len);
-
-                double coord[3] = {0};
-                bytes_received = recvfrom(socket_descriptor, coord, sizeof(coord), 0,
-                                          (struct sockaddr *) &client_addr, &client_addr_len);
-
-                if (bytes_received <= 0) {
-                    write_log(message_user.user, "communication error", 500);
-                    break;
-                }
-
-                struct data *result = task1(coord[0], coord[1], coord[2]);
-                sendto(socket_descriptor, result, sizeof(struct data) * 10, 0,
-                       (struct sockaddr *) &client_addr, client_addr_len);
-                free(result);
-                write_log(message_user.user, "task1 executed", 200);
-            } else if (command == 2) {
-                struct data *result = task2();
-                sendto(socket_descriptor, result, sizeof(struct data) * 10, 0,
-                       (struct sockaddr *) &client_addr, client_addr_len);
-                free(result);
-                write_log(message_user.user, "task2 executed", 200);
-            } else {
-                write_log(message_user.user, "invalid command", 400);
-                exit(EXIT_FAILURE);
-            }
-        }
-    } else {
-        write_log(message_user.user, "authentication error", 400);
-    }
+    command_list[4].command = "LOGOUT";
+    command_list[4].key = 4;
 }
 
+char *get_command() {
+    static char result[100];
 
-bool check_user(FILE *file_users, struct Message *user, struct User *user_in_file) {
+    result[0] = '\0';
+
+    for (int i = 0; i < 5; i++) {
+        char temp[20];
+        sprintf(temp, "%d:%s ", command_list[i].key, command_list[i].command);
+        strcat(result, temp);
+    }
+
+    return result;
+}
+
+bool check_user(struct User *user) {
+    FILE *file_users = fopen(FILE_NAME_USER, "r");
+
     bool authenticated = false;
-    fseek(file_users, 0, SEEK_SET);
+    char username[20], password[20];
 
-    while (fscanf(file_users, "%s %s", user_in_file->username, user_in_file->password) == 2) {
-        if (strcmp(user_in_file->password, user->user.password) == 0 &&
-            strcmp(user_in_file->username, user->user.username) == 0) {
+    while (fscanf(file_users, "%s %s", username, password) == 2) {
+        if (strcmp(password, user->password) == 0 &&
+            strcmp(username, user->username) == 0) {
             authenticated = true;
             break;
         }
     }
+
+    fclose(file_users);
 
     return authenticated;
 }
@@ -157,11 +244,15 @@ bool check_user(FILE *file_users, struct Message *user, struct User *user_in_fil
 void write_log(struct User user, const char *user_command, int server_responsive) {
     FILE *file = fopen(FILE_NAME_LOG, "a");
 
+    char uuid_str[37];
+    uuid_unparse(user.uuid, uuid_str);
+
     time_t currentTime;
     time(&currentTime);
     struct tm *localTime = localtime(&currentTime);
 
-    fprintf(file, "time: [%d] User %d: %s, Server response: %d\n", localTime->tm_sec, user.id, user_command, server_responsive);
+    fprintf(file, "time: %d:%d:%d User: %s %s, Server response: %d\n", localTime->tm_hour, localTime->tm_min,
+            localTime->tm_sec, uuid_str, user_command, server_responsive);
 
     fclose(file);
 }
