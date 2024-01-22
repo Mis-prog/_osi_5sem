@@ -7,11 +7,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <string.h>
 #include <uuid/uuid.h>
 #include "src_lib/calculation.h"
 
 #define PORT_NUMBER 3425
 #define LENGTH 20
+#define MAX_DATA_POINTS 10;
 
 struct Key_Command {
     char *command;
@@ -26,9 +28,11 @@ struct User {
 
 struct Message {
     int command;
-    struct data *data_message;
-    char *string_message;
+    struct data data_message[10];
+    char string_message[100];
+    double coord_message[3];
 };
+
 
 struct Key_Command command_list[5];
 
@@ -42,6 +46,10 @@ char *get_command();
 bool check_user(struct User *user);
 
 void write_log(struct User user, const char *user_command, int server_responsive);
+
+void display_task1_results(struct data *result);
+
+void display_task2_results(struct data *result);
 
 int main() {
     int socket_descriptor;
@@ -76,18 +84,22 @@ int main() {
     struct User user;
     uuid_generate(user.uuid);
 
+
+    if (!authenticated) { uuid_generate(user.uuid); }
+
     while (true) {
 
         int bytes_received = recvfrom(socket_descriptor, &message, sizeof(message), 0,
                                       (struct sockaddr *) &client_addr, &client_addr_len);
         if (bytes_received < 0) {
             perror("recvfrom");
-            write_log(user, "Ошибка ввода", 530);
+            write_log(user, "Fail input", 530);
             close(socket_descriptor);
             exit(EXIT_FAILURE);
         }
 
-        switch (command) {
+        switch (message.command) {
+
             case 0: //LOGIN
                 if (!authenticated) {
                     bytes_received = recvfrom(socket_descriptor, &user, sizeof(user), 0,
@@ -102,86 +114,94 @@ int main() {
                     sendto(socket_descriptor, &authenticated, sizeof(authenticated), 0,
                            (struct sockaddr *) &client_addr, client_addr_len);
                     write_log(user, "LOGIN", 200);
-                    break;
                 } else {
-                    write_log(user, "Повторная авторизация", 400);
-                    close(socket_descriptor);
+                    strncpy(message.string_message, "LOGIN again", sizeof(message.string_message) - 1);
+                    sendto(socket_descriptor, &message, sizeof(message), 0,
+                           (struct sockaddr *) &client_addr, client_addr_len);
+                    write_log(user, "LOGIN again", 400);
                 }
                 break;
             case 1: //LIST
                 if (authenticated) {
-                    message.string_message = NULL;
-                    message.string_message = get_command();
+                    char *list_command = get_command();
+                    strncpy(message.string_message, list_command, sizeof(message.string_message) - 1);
                     sendto(socket_descriptor, &message, sizeof(message), 0,
                            (struct sockaddr *) &client_addr, client_addr_len);
                     write_log(user, "LIST", 200);
                 } else {
-                    message.string_message = NULL;
-                    message.string_message = "Нет доступа";
-                    sendto(socket_descriptor,&message, sizeof(message), 0,(struct sockaddr *) &client_addr, client_addr_len);
-                    write_log(user, "Нет доступа", 403);
+                    strncpy(message.string_message, "No permissions for LIST command", sizeof(message.string_message) - 1);
+                    sendto(socket_descriptor, &message, sizeof(message), 0, (struct sockaddr *) &client_addr,
+                           client_addr_len);
+                    write_log(user, "No permissions for LIST command", 403);
                 }
                 break;
             case 2: //GET_TASK1
                 if (authenticated) {
-                    message.string_message = NULL;
-                    message.string_message = "Введите x,y,z";
+                    strncpy(message.string_message, "Input x,y,z", sizeof(message.string_message) - 1);
                     sendto(socket_descriptor, &message, sizeof(message), 0,
                            (struct sockaddr *) &client_addr, client_addr_len);
 
                     bytes_received = recvfrom(socket_descriptor, &message, sizeof(message), 0,
                                               (struct sockaddr *) &client_addr, &client_addr_len);
                     if (bytes_received < 0) {
-                        write_log(user, "Ошибка ввода", 500);
+                        write_log(user, "Fail input", 500);
                         exit(EXIT_FAILURE);
                     }
-                    message.data_message = task1(message.data_message->x, message.data_message->y,
-                                                 message.data_message->z);
+
+                    struct data *result = task1(message.coord_message[0], message.coord_message[1],
+                                                message.coord_message[2]);
+                    memcpy(message.data_message, result, sizeof(struct data) * 10);
                     sendto(socket_descriptor, &message, sizeof(message), 0,
                            (struct sockaddr *) &client_addr, client_addr_len);
                     write_log(user, "GET_TASK1", 200);
+                    free(result);
+
                 } else {
-                    message.string_message = NULL;
-                    message.string_message = "Нет доступа";
-                    sendto(socket_descriptor,&message, sizeof(message), 0,(struct sockaddr *) &client_addr, client_addr_len);
-                    write_log(user, "Нет доступа", 403);
+                    strncpy(message.string_message, "No permissions for GET_TASK1 command", sizeof(message.string_message) - 1);
+                    sendto(socket_descriptor, &message, sizeof(message), 0, (struct sockaddr *) &client_addr,
+                           client_addr_len);
+                    write_log(user, "No permissions for GET_TAKS1 command", 403);
                 }
+
                 break;
             case 3: //GET_TASK2
                 if (authenticated) {
-                    message.data_message = task2();
+                    struct data *result = task2();
+                    memcpy(message.data_message, result, sizeof(struct data) * 10);
                     sendto(socket_descriptor, &message, sizeof(message), 0,
                            (struct sockaddr *) &client_addr, client_addr_len);
                     write_log(user, "GET_TASK2", 200);
+                    free(result);
+
                 } else {
-                    message.string_message = NULL;
-                    message.string_message = "Нет доступа";
-                    sendto(socket_descriptor, &message, sizeof(message),0,(struct sockaddr *) &client_addr, client_addr_len);
-                    write_log(user, "Нет доступа", 403);
+                    strncpy(message.string_message, "No permissions for GET_TASK2 command", sizeof(message.string_message) - 1);
+                    sendto(socket_descriptor, &message, sizeof(message), 0, (struct sockaddr *) &client_addr,
+                           client_addr_len);
+                    write_log(user, "No permissions for GET_TASK2 command", 403);
                 }
                 break;
             case 4: //LOGOUT
-                message.string_message = NULL;
                 if (authenticated) {
                     authenticated = false;
 
-                    message.string_message = "Выход из системы";
+                    strncpy(message.string_message, "Exit of account", sizeof(message.string_message) - 1);
                     sendto(socket_descriptor, &message, sizeof(message), 0,
                            (struct sockaddr *) &client_addr, client_addr_len);
                     write_log(user, "LOGOUT", 200);
                 } else {
-                    message.string_message = "Повторный выход из системы";
+                    strncpy(message.string_message, "LOGOUT again", sizeof(message.string_message) - 1);
                     sendto(socket_descriptor, &message, sizeof(message), 0,
                            (struct sockaddr *) &client_addr, client_addr_len);
-                    write_log(user, "Повторный выход из системы", 400);
+                    write_log(user, "LOGOUT again", 400);
                 }
+
+                uuid_generate(user.uuid);
                 break;
             default:
-                message.string_message = NULL;
-                message.string_message = "Запрос не поддерживается сервером";
+                strncpy(message.string_message, "Request not  supported", sizeof(message.string_message) - 1);
                 sendto(socket_descriptor, &message, sizeof(message), 0,
                        (struct sockaddr *) &client_addr, client_addr_len);
-                write_log(user, "Запрос не поддерживается сервером", 501);
+                write_log(user, "Request not  supported", 501);
 
         }
     }

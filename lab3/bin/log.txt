@@ -1,3 +1,0 @@
-time: 21:24:29 User: 197551c2-80e1-4fba-8fa6-53f688ec5a7c LOGIN, Server response: 200
-time: 21:24:35 User: 197551c2-80e1-4fba-8fa6-53f688ec5a7c Повторная авторизация, Server response: 400
-time: 21:24:35 User: 197551c2-80e1-4fba-8fa6-53f688ec5a7c Ошибка ввода, Server response: 530
