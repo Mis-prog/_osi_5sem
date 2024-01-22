@@ -1,0 +1,6 @@
+time: 1:15:52 User: dabd2c20-3628-4573-b583-0db2f5bef7cf No permissions for LIST command, Server response: 403
+time: 1:16:7 User: 1d055878-a4b8-4c29-a48e-9e05fab8bd21 LOGIN, Server response: 200
+time: 1:16:11 User: 1d055878-a4b8-4c29-a48e-9e05fab8bd21 LIST, Server response: 200
+time: 1:16:17 User: 1d055878-a4b8-4c29-a48e-9e05fab8bd21 GET_TASK1, Server response: 200
+time: 1:16:19 User: 1d055878-a4b8-4c29-a48e-9e05fab8bd21 GET_TASK2, Server response: 200
+time: 1:16:23 User: 1d055878-a4b8-4c29-a48e-9e05fab8bd21 LOGOUT, Server response: 200
